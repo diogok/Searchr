@@ -1,0 +1,185 @@
+Hello World em JavaFX: Faça um streaming com a busca do twitter.
+
+Este artigo sera um tutorial sobre o básico do JavaFX, vai tratar a sintaxe, como construir uma interface básica e acessar um webservice. O Objeto final será um client para busca do twitter, atualizando automaticamente.
+
+Não será um stream propriamente dito pois a API de Streaming do twitter requer autenticação, então para manter mais simples usará atualizações agendas para busca de novos itens. Não vou tratar de nenhuma ferramenta especifica, apenas do código em si, a parte de compilar e rodar fica a cargo da sua IDE. Vamos começar?
+
+O primeiro passo é criar nosso projeto, que se chamará , muito criativamente, Searchr.. Vou trabalhar apenas no pacote homônimo, searchr. Vamos primeiro o ponto de entrada na nossa aplicação, que será o Main, então temos o arquivo searchr/Main.fx , lembre-se de configurar sua IDE para usa-lo como ponto inicial.
+
+O primeiro ponto de um aplicativo JavaFx é um objeto “Stage”, cada Stage representa uma janela. É  importante notar que a janela é aberta no momento que criamos o Stage, assim que ele é construído.    Cada Stage possui então um Scene, que é o conteúdo da janela, aonde vamos colocar nossos elementos gráficos. 
+
+O ponto de partida da aplicação é a função “run()”, quando temos o “run” lá criamos nosso stage e iniciamos qualquer outro processo necessário ao inicio da aplicação. Veja como colocamos então uma janela com um texto dentro:
+
+// Main.fx, após imports
+
+var stage: Stage ;
+def scene: Scene = Scene {
+	fill: Color.WHITE
+	content: [ Text { content: “Hello JavaFx” } ]
+}
+
+function run() {
+	stage = Stage {
+		title: “Hello JavaFx”
+		width: 350
+		height: 500
+		scene: scene
+	}
+}
+
+Explicando tudo, na sintaxe do javafx temos duas formas de declarar uma variável, como sendo realmente variável ou definitiva, sendo preferível ser definitiva. O formato é então nomeDaVariavel: Tipo. 
+
+Temos então a construção de um objeto Scene, veja que na sintaxe declarativa iniciamos cada propriedade no momento da criação do objeto. Nesse caso criei o scene com “fill” branco e um array no conteúdo.
+
+Uma lista é tratada como visto no content do Scene, entre colchetes, com elementos separados por virgula. Criei ainda um texto com conteúdo “Hello JavaFX”. Mais sobre listas mais tarde.
+
+Em seguida declarei um função, nesse caso a principal “run”, aonde começa o programa, quando chega nesse ponto crio a janela que conterá minha UI. Vamos começar a explorar alguns elementos básicos de UI agora.
+
+Minha ideia do aplicativo é extremamente simples, um campo de texto, um botão “Search” e em baixo a lista dos tweets.
+
+Para organizar tudo, criarei um container vertical, o Vbox, e o coloco na cena (Scene).  Com conteúdo vazio.
+
+def container: VBox = VBox { spacing: 5, content: [] } ;
+def scene: Scene = Scene { 
+			fill: Color.rgb(51,51,51)
+			content: [ container ]
+			}
+
+Crio agora a caixa de texto onde vai entrar a busca. E o botão para fazer o busca.
+
+def input: TextBox = TextBox { promptText: “Search...” , action: doSearch, columns: 30};
+def button: Button = Button { text: “Search”, action: doSearch };
+
+Veja que temos ai um “action”, aponto ele para uma função “doSearch”, que tem a mesma assinatura que a propriedade “action”, que é uma função sem argumentos e que não retorne nada.
+
+function doSearch(): Void {}
+
+Deixo a função para mais tarde, veja que o tipo de retorno vem depois da declaração. Posso ainda definir assim:
+
+def doSearch = function(): Void {}
+
+Vou colocar esses elementos na mesma linha usando o Hbox, e já o incluo no container vertical.
+
+def searchBar: HBox = HBox { spacing: 5, content: [ input, button] }
+def container: VBox = VBox { spacing: 5, content: [ searchBar ] }
+
+Vou declarar agora uma classe para generalizar a interface de cada linha que será o resultado da busca. Será um CustomNode, que é um elemento personalizado.
+
+class SearchLine extends CustomNode {
+	
+	public-init var profileUrl: String ;
+	public-init var user: String ;
+	public-init var text: String;
+	public var width: Number ;
+
+	override function create(): Node {
+		return HBox {
+			spacing: 5
+			content: [ 
+				ImageView {
+					image: Image { 
+                                            url: profileUrl
+                                            , width: 54
+                                            , height: 54 
+                                            , backgroundLoading: true
+                                            , placeholder: Image {
+                                                        url: "{__DIR__}placeholder.png"
+                                                        width: 54
+                                                        height: 54
+                                                    }}
+				}
+				Text {
+					content: “{user}: {text}”
+					wrappingWidth: bind width – 60
+					fill: Color.WHITESMOKE
+				}
+			]
+		}
+	}
+}
+
+Temos ai vários elementos para explorar, a declaração da Classe é básica. Temos então os atributos “public-init” que só podem ser alterados na construção do objeto. Width não é public-init pois pode mudar conforme o tamanho da janela mude, você verá mais tarde.
+
+Tenho então que sobreescrever (o override) a função create da classe CustomNode, onde devo retorna o elemento customizado.
+
+Nesse casso fiz uma linha HBox , com uma image e o texto do tweet. Vejam que na imagem defino a URL de onde deve ser carregada, informo para carregar em background, para não travar a UI, e defino uma imagem temporária (placeHolder).
+
+Ai temos algo interessante, uma variável especial __DIR_ indica o diretório do aplicativo. E temos a string. Em Java FX não concatenamos como em Java, mas sim usamos a expressão dentro de chaves, como:
+
+def soma = “Soma de {a} + {b} = {a +b}”
+
+Em seguida temos o elemento texto, novamente com uma string com variáveis, e um limite de largura, aonde haverá quebra automática de linha. E um BIND.
+
+Um bind é uma ligação entre uma variável ou propriedade e uma outra variável ou expressão, assim quando uma muda a outra é atualizada. Quando width mudar, a largura do texto irá acompanhar. Podemos ainda ter casos mais complexo, como expressões e loops, como veremos até o final.
+
+Vamos criar agora o container dos tweets, esse será um pouco mais complexo, pois exibirá apenas parte dos tweets, e terá rolagem, mas isso vai explorar boas partes da linguagem. Então vamos por partes, primeiro a lista em si:
+
+def tweetList: VBox = VBox { spacing: 5 , content: bind for ( tweet in tweets) {
+								SearchLine{
+									profileUrl: tweet.profileImage
+									user: tweet.user
+									text: tweet.text
+									width: bind scene.width -15
+								} } }
+Vejam que interessante, eu liguei o conteúdo da lista a um loop, que gera a SearchLine. E garanti que o tamanho do texto vai bater com o tamanho da tela. Vamos definir esses itens faltosos logo:
+
+class Tweet {
+	public var profileImage :String;
+	public var user: String ;
+	public var text: String ;
+}
+var tweets: Tweet[];
+
+Essa classe vai conter cada tweet, como sendo nosso model. E temos a lista onde armazenamos os tweet achados.
+
+Agora temos um detalhe, que é que não podemos exibir a lista toda por conta do espaço, então criamos um ClipView. Ele funciona contendo o conteúdo, mas exibindo apenas parte dele. Veja:
+
+def clip: ClipView = ClipView {
+	clipY: 0
+	clipX: 0
+	node: tweetList
+	height: bind scene.height - 30
+	width: bind scene.width
+}
+
+Temos ai nosso ClipView, começando exibindo o começo apenas, contendo o VBox anterior, a altura será sempre o da janela menos 30 (mais ou menos o tamanho da barra de busca), e a largura será o da janela.
+
+Um caso especial sobre o ClipView, é que é pannable. Ou seja, basta “segurar” e arrastar para rolar. Podemos definir ele como “pannable: false” e adcionar um ScrollBar também ou eventos de mouse, mas ai fica para outra oportunidade.
+
+Agora é só inserir o clip no container:
+
+def container: VBox = VBox { translateX: 10, translateY: 5, spacing: 5, content: [ searchBar, clip ] }
+
+Adcionei ainda um posicionamento em X e Y para haver um espaço na janela. Feito a UI, agora é hora de mágica! Vamos ao acesso ao webservice.
+
+Vou usar uma classe chamada AtomTask(podia ser RssTask, FeedTask, ou mesmo genérico HttpRequest), que recupera atom de tempos em tempos. Trabalhamos na função doSearch que definimos antes:
+
+var current: AtomTask ;
+
+function doSearch(): Void {
+    if(current != null) {   current.stop(); }
+    current = AtomTask {
+        interval: 1m
+        location: "http://search.twitter.com/search.atom?q={input.text}"
+        onFeed: function(feed: Feed) {
+            delete tweets;
+        }
+        onEntry: function(item: Entry) {
+            insert Tweet {
+                profileImage: item.links[1].href
+                text: item.title.text
+                user: item.authors[0].name
+            } into tweets ;
+        }
+    };
+    current.start();
+    input.text = “”;
+}
+
+Crio uma variável para conter a Tarefa corrente. Ao fazer a busca, paro a tarefa anterior, e crio uma nova. Defino o intervalo de 1 minuto (é um tipo do JavaFx chamado Duration), a location de acordo com o conteúdo do input.
+
+O evento onFeed é chamado assim que recebemos o Atom, ai eu limpo o array de tweets.
+
+O evento onEntry recebe cada alemento achado no Atom, para cada um eu insiro um novo Tweet no array de tweets.
+
+Em seguida eu inicio a tarefa, e limpo a caixa de texto. Assim como mágica ( #NOT ), o aplicativo está pronto. Agora você pode roda-lo usando webstart, através do jnlp que sua IDE criou(ou não), ou como applet no seu site.
