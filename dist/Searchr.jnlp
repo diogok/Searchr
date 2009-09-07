@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jnlp spec="1.0+" codebase="file:/home/diogo/NetBeansProjects/Searchr/dist/" href="Searchr.jnlp">
+    <information>
+        <title>Searchr</title>
+        <vendor>${application.vendor}</vendor>
+        <homepage href=""/>
+        <description>Searchr</description>
+        <offline-allowed/>
+        <shortcut>
+            <desktop/>
+        </shortcut>
+    </information>
+    <resources>
+        <j2se version="1.5+"/>
+        <extension name="JavaFX Runtime" href="http://dl.javafx.com/1.2/javafx-rt.jnlp"/>
+        <jar href="Searchr.jar" main="true"/>
+    </resources>
+    <application-desc main-class="com.sun.javafx.runtime.main.Main">
+        <argument>MainJavaFXScript=searchr.Main</argument>
+    </application-desc>
+    <update check="background">
+</jnlp>
